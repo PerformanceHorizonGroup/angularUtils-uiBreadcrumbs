@@ -34,7 +34,8 @@
                 },
                 scope: {
                     displaynameProperty: '@',
-                    abstractProxyProperty: '@?'
+                    abstractProxyProperty: '@?',
+                    abstractProxyParamsProperty: '@?'
                 },
                 link: function(scope) {
                     scope.breadcrumbs = [];
@@ -61,9 +62,17 @@
                                 displayName = getDisplayName(workingState);
 
                                 if (displayName !== false && !stateAlreadyInBreadcrumbs(workingState, breadcrumbs)) {
+                                    var params = getOverrideProperties(currentState);
+                                    var route = workingState.name;
+
+                                    if (params !== false)
+                                    {
+                                        route = route + '(' + params + ')';
+                                    }
+
                                     breadcrumbs.push({
                                         displayName: displayName,
-                                        route: workingState.name
+                                        route: route
                                     });
                                 }
                             }
@@ -83,14 +92,15 @@
                     function getWorkingState(currentState) {
                         var proxyStateName;
                         var workingState = currentState;
+
                         if (currentState.abstract === true) {
                             if (typeof scope.abstractProxyProperty !== 'undefined') {
                                 proxyStateName = getObjectValue(scope.abstractProxyProperty, currentState);
                                 if (proxyStateName) {
-                                    workingState = angular.copy($state.get(proxyStateName));
-                                    if (workingState) {
-                                        workingState.locals = currentState.locals;
-                                    }
+                                     workingState = angular.copy($state.get(proxyStateName));
+                                     if (workingState) {
+                                         workingState.locals = currentState.locals;
+                                     }
                                 } else {
                                     workingState = false;
                                 }
@@ -99,6 +109,36 @@
                             }
                         }
                         return workingState;
+                    }
+
+                    /**
+                     * Get abstract proxy params value found in the `scope.abstractProxyParamsProperty` property, or
+                     * set it to `false` which means an abstract proxy state is not being used.
+                     * @param currentState
+                     * @returns {*}
+                     */
+                    function getOverrideProperties(currentState) {
+                        var proxyStateProperties;
+                        if (currentState.abstract === true) {
+                            if (typeof scope.abstractProxyProperty !== 'undefined') {
+                                proxyStateName = getObjectValue(scope.abstractProxyProperty, currentState);
+                                if (proxyStateName) {
+                                    workingState = $state.get(proxyStateName);
+                                    if (workingState && (typeof scope.abstractProxyParamsProperty !== 'undefined')) {
+                                        proxyStateProperties = getObjectValue(scope.abstractProxyParamsProperty, currentState);
+                                        interpolationContext =  (typeof currentState.locals !== 'undefined') ? currentState.locals.globals : currentState;
+                                        proxyStateProperties = $interpolate(proxyStateProperties)(interpolationContext);
+                                    } else {
+                                        proxyStateProperties = false;
+                                    }
+                                } else {
+                                    proxyStateProperties = false;
+                                }
+                            } else {
+                                proxyStateProperties = false;
+                            }
+                        }
+                        return proxyStateProperties;
                     }
 
                     /**
